@@ -3,7 +3,8 @@ const {
   Client, GatewayIntentBits, Events, REST, Routes,
   SlashCommandBuilder, ChannelType, PermissionFlagsBits,
   ActionRowBuilder, ButtonBuilder, ButtonStyle,
-  ModalBuilder, TextInputBuilder, TextInputStyle
+  ModalBuilder, TextInputBuilder, TextInputStyle,
+  StringSelectMenuBuilder
 } = require('discord.js');
 
 const { initializeApp } = require('firebase/app');
@@ -277,14 +278,27 @@ client.on(Events.InteractionCreate, async (i) => {
       }
 
       if (i.customId === "gift_inside") {
-        const modal = new ModalBuilder().setCustomId("gift_inside_modal").setTitle("送禮");
-        modal.addComponents(
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder().setCustomId("amount").setLabel("金額").setRequired(true).setStyle(TextInputStyle.Short)
-          )
-        );
-        return i.showModal(modal);
-      }
+
+		  const role = i.guild.roles.cache.get(SERVICE_ROLE_ID);
+
+		  const options = role.members.map(member => ({
+			label: member.user.username,
+			value: member.id
+		  })).slice(0, 25);
+
+		  const row = new ActionRowBuilder().addComponents(
+			new StringSelectMenuBuilder()
+			  .setCustomId("gift_select_target")
+			  .setPlaceholder("請選擇要送禮的陪陪")
+			  .addOptions(options)
+		  );
+
+		  return i.reply({
+			content: "🎁 請選擇送禮對象",
+			components: [row],
+			ephemeral: true
+		  });
+		}
 
       if (i.customId === "close") {
 
@@ -361,22 +375,52 @@ client.on(Events.InteractionCreate, async (i) => {
         return i.showModal(modal);
       }
     }
+	if (i.isStringSelectMenu() && i.customId === "gift_select_target") {
+
+		  const targetId = i.values[0];
+
+		  const modal = new ModalBuilder()
+			.setCustomId(`gift_inside_modal_${targetId}`)
+			.setTitle("送禮");
+
+		  modal.addComponents(
+			new ActionRowBuilder().addComponents(
+			  new TextInputBuilder()
+				.setCustomId("amount")
+				.setLabel("金額")
+				.setRequired(true)
+				.setStyle(TextInputStyle.Short)
+			)
+		  );
+
+		  return i.showModal(modal);
+		}
 
     // ===== Modal =====
     if (i.isModalSubmit()) {
 
-      if (i.customId === "gift_inside_modal") {
-        const amount = parseInt(i.fields.getTextInputValue("amount"));
-        if (isNaN(amount) || amount <= 0)
-          return i.reply({ content: "❌ 金額錯誤", ephemeral: true });
+      if (i.customId.startsWith("gift_inside_modal_")) {
+		  const targetId = i.customId.split("_")[3];
+		  const amount = parseInt(i.fields.getTextInputValue("amount"));
 
-        const balance = await getBalance(i.user.id);
-        if (balance < amount)
-          return i.reply({ content: "❌ 餘額不足", ephemeral: true });
+		  if (isNaN(amount) || amount <= 0)
+			return i.reply({ content: "❌ 金額錯誤", ephemeral: true });
 
-        await updateBalance(i.user.id, -amount);
-        return i.reply({ content: `🎁 贈送成功 ${amount} 元`, ephemeral: true });
-      }
+		  const balance = await getBalance(i.user.id);
+		  if (balance < amount)
+			return i.reply({ content: "❌ 餘額不足", ephemeral: true });
+
+		  await updateBalance(i.user.id, -amount);
+
+		  await i.channel.send({
+			content: `🎁 玩家 ${i.user} 送給了 <@${targetId}> 價值 ${amount} 元的禮物！`
+		  });
+
+		  return i.reply({
+			content: `🎁 已成功送給陪陪 <@${targetId}> 禮物價值 ${amount} 元`,
+			ephemeral: true
+		  });
+		}
 
       if (i.customId.startsWith("rate_modal_")) {
         await i.deferReply({ ephemeral: true });
