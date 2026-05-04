@@ -442,9 +442,27 @@ return i.reply({ embeds: [embed], ephemeral: true });
       }
 	  
 	  if (i.customId === "gift") {
+		  
+		  const safeName = i.user.username
+			.replace(/[^\w\-]/g, "_")
+			.toLowerCase();
+
+		  await i.guild.channels.fetch();
+		  
+		  const existing = i.guild.channels.cache.find(c =>
+			  c.parentId === TICKET_CATEGORY_ID &&
+			  c.name === safeName
+			);
+
+			if (existing) {
+			  return i.reply({
+				content: `❌ 你已經有禮物工單：${existing}`,
+				ephemeral: true
+			  });
+			}
 
 		  const channel = await i.guild.channels.create({
-			name: `${i.user.id}`,
+			name: safeName,
 			type: ChannelType.GuildText,
 			parent: TICKET_CATEGORY_ID,
 			permissionOverwrites: [
@@ -542,18 +560,19 @@ content: `🎁 禮物工單
 		  const bossIncome = Math.floor(priceNum * 0.9);
 		  await updateBalance(boss, bossIncome);
 
-		  const embed = new EmbedBuilder()
-		  .setTitle("🎁 送禮成功！")
-		  .setDescription(
-`👤 玩家名稱：<@${customerId}>
+		  const senderUser = await i.client.users.fetch(customerId);
 
-👤 陪陪名稱：<@${boss}>
+			const embed = new EmbedBuilder()
+			  .setTitle("✨ 快來看看是誰送禮啦!")
+			  .setDescription(
+`🎉 特別感謝 <@${customerId}> 送給 <@${boss}> 一份高貴的禮物!
 
-💰 禮物金額：${priceNum} 元
-💵 玩家剩餘：${newUserBalance} 元`
-		  )
-		  .setImage(giftImages[price])
-		  .setColor(0xFF69B4);
+💰 禮物價值：${priceNum} 元`
+			  )
+			  .setThumbnail(senderUser.displayAvatarURL({ dynamic: true }))
+			  .setImage(giftImages[String(price)])
+			  .setColor(0xFF69B4)
+			  .setTimestamp();
 
 		await i.channel.send({
 		  embeds: [embed]
