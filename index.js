@@ -3,7 +3,8 @@ const {
   Client, GatewayIntentBits, Events, REST, Routes,
   SlashCommandBuilder, ChannelType, PermissionFlagsBits,
   ActionRowBuilder, ButtonBuilder, ButtonStyle,
-  ModalBuilder, TextInputBuilder, TextInputStyle
+  ModalBuilder, TextInputBuilder, TextInputStyle,
+  StringSelectMenuBuilder
 } = require('discord.js');
 
 const { initializeApp } = require('firebase/app');
@@ -30,7 +31,7 @@ const GUILD_ID = "1495429605866213386";
 const SERVICE_ROLE_ID = "1495433255946817557";//老闆身分組
 const RATING_CHANNEL_ID = "1500653398473576628";//初始工單頻道
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds,GatewayIntentBits.GuildMembers] });
 
 // ===== 指令 =====
 const commands = [
@@ -214,12 +215,11 @@ client.on(Events.InteractionCreate, async (i) => {
 		  const total = await getRechargeTotal(user.id);
 
 		  return i.reply({
-			content:
-		`✅ 恭喜您加值成功!
-		👤 玩家名稱：${user.username}
-		💰 本次加值金額：${amount} 元
-		💵 總計剩餘金額：${newBalance} 元
-		💎 累積儲值金額：${total} 元`
+content:`✅ 恭喜您加值成功!
+👤 玩家名稱：${user.username}
+💰 本次加值金額：${amount} 元
+💵 總計剩餘金額：${newBalance} 元
+💎 累積儲值金額：${total} 元`
 		  });
 		}
 
@@ -247,12 +247,11 @@ client.on(Events.InteractionCreate, async (i) => {
 		  const total = await getRechargeTotal(user.id);
 
 		  return i.reply({
-			content:
-		`💸 扣款成功!
-		👤 玩家名稱：${user.username}
-		💰 本次扣款金額：${amount} 元
-		💵 總計剩餘金額：${newBalance} 元
-		💎 累積儲值金額：${total} 元`
+content:`💸 扣款成功!
+👤 玩家名稱：${user.username}
+💰 本次扣款金額：${amount} 元
+💵 總計剩餘金額：${newBalance} 元
+💎 累積儲值金額：${total} 元`
 		  });
 		}
 		if (i.commandName === "gift") {
@@ -270,10 +269,9 @@ client.on(Events.InteractionCreate, async (i) => {
 		  }
 
 		  return i.reply({
-			content:
-		`🎁 送禮成功！
-		👤 接收對象：${result.target}
-		🎁 禮物名稱：${result.giftName}`,
+content:`🎁 送禮成功！
+👤 接收對象：${result.target}
+🎁 禮物名稱：${result.giftName}`,
 			ephemeral: true
 		  });
 		}
@@ -289,14 +287,14 @@ client.on(Events.InteractionCreate, async (i) => {
         }
 
         const customerId = i.channel.permissionOverwrites.cache.find(p =>
-          p.allow.has(PermissionFlagsBits.ViewChannel) &&
-          p.id !== SERVICE_ROLE_ID &&
-          p.id !== client.user.id
-        )?.id;
+		  p.allow.has(PermissionFlagsBits.ViewChannel) &&
+		  p.id !== SERVICE_ROLE_ID &&
+		  p.id !== client.user.id
+		)?.id;
 
-        if (!customerId) {
-          return i.reply({ content: "❌ 無法識別工單客戶", ephemeral: true });
-        }
+		if (!customerId) {
+		  return i.reply({ content: "❌ 無法識別玩家", ephemeral: true });
+		}
 
         const existing = i.guild.channels.cache.find(
           c =>
@@ -415,63 +413,144 @@ client.on(Events.InteractionCreate, async (i) => {
         );
         return i.showModal(modal);
       }
+	  
+	  if (i.customId === "gift") {
 
-      if (i.customId === "gift") {
+		  const ticketId = await getNextTicketId();
 
-		  const modal = new ModalBuilder()
-			.setCustomId("gift_direct_modal")
-			.setTitle("我要送禮");
+		  const channel = await i.guild.channels.create({
+			name: `禮物_${ticketId}`,
+			type: ChannelType.GuildText,
+			parent: TICKET_CATEGORY_ID,
+			permissionOverwrites: [
+			  { id: i.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+			  { id: i.user.id, allow: [PermissionFlagsBits.ViewChannel] },
+			  { id: SERVICE_ROLE_ID, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
+			  { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel] }
+			]
+		  });
+		  
+		  const giftMenu = new ActionRowBuilder().addComponents(
+			  new StringSelectMenuBuilder()
+				.setCustomId("gift_select_item")
+				.setPlaceholder("🎁 選擇想要送的禮物")
+				.addOptions([
+				  { label: "小的大便", value: "50" },
+				  { label: "大的大便", value: "500" },
+				  { label: "超級大便", value: "888" },
+				  { label: "終極大便", value: "1314" },
+				  { label: "究極大便", value: "9999" }
+				])
+			);
+			await i.guild.members.fetch();
+			const bossMembers = i.guild.members.cache.filter(m =>
+			  m.roles.cache.has(SERVICE_ROLE_ID)
+			);
 
-		  modal.addComponents(
-			new ActionRowBuilder().addComponents(
-			  new TextInputBuilder()
-				.setCustomId("target")
-				.setLabel("請@要送禮的陪陪")
-				.setPlaceholder("@某某陪陪")
-				.setRequired(true)
-				.setStyle(TextInputStyle.Short)
-			),
-			new ActionRowBuilder().addComponents(
-			new TextInputBuilder()
-			  .setCustomId("giftName")
-			  .setLabel("輸入禮物名稱")
-			  .setPlaceholder("例如：布丁")
-			  .setRequired(true)
-			  .setStyle(TextInputStyle.Short)
-			)
-		  );
+			const bossMenu = new ActionRowBuilder().addComponents(
+			  new StringSelectMenuBuilder()
+				.setCustomId("gift_select_boss")
+				.setPlaceholder("👤 選擇要送的陪陪")
+				.addOptions(
+				  bossMembers.map(m => ({
+					label: m.displayName,
+					value: m.id
+				  }))
+				)
+			);
+			const confirmBtn = new ActionRowBuilder().addComponents(
+			  new ButtonBuilder()
+				.setCustomId("gift_confirm")
+				.setLabel("🎁 確認送出")
+				.setStyle(ButtonStyle.Success)
+			);
 
-		  return i.showModal(modal);
-		}
-    }
-    // ===== Modal =====
-    if (i.isModalSubmit()) {
-
-        if (i.customId === "gift_direct_modal") {
-
-		  const rawTarget = i.fields.getTextInputValue("target");
-		  const giftName = i.fields.getTextInputValue("giftName");
-
-		  const match = rawTarget.match(/<@!?(\d+)>/);
-		  if (!match)
-			return i.reply({ content: "❌ 請正確 @玩家", ephemeral: true });
-
-		  const targetId = match[1];
-
-		  const result = await handleGift(i, i.user, targetId, giftName);
-
-		  if (result.error) {
-			return i.reply({ content: result.error, ephemeral: true });
-		  }
-
+			await channel.send({
+content: `🎁 禮物工單
+👤 玩家：${i.user}
+📌 請選擇禮物與陪陪`,
+			  components: [giftMenu, bossMenu, confirmBtn]
+			});
 		  return i.reply({
-			content:
-		`🎁 送禮成功！
-		👤 接收對象：${result.target}
-		🎁 禮物名稱：${result.giftName}`,
+			content: `✅ 已建立禮物工單：${channel}`,
 			ephemeral: true
 		  });
 		}
+		if (i.customId === "gift_confirm") {
+
+		  const snap = await get(ref(db, `giftTemp/${i.channel.id}`));
+
+		  if (!snap.exists()) {
+			return i.reply({ content: "❌ 尚未選擇禮物或陪陪", ephemeral: true });
+		  }
+
+		  const { price, boss } = snap.val();
+
+		  if (!price || !boss) {
+			return i.reply({ content: "❌ 請先選擇完整", ephemeral: true });
+		  }
+
+		  const customerId = i.channel.permissionOverwrites.cache.find(p =>
+			p.allow.has(PermissionFlagsBits.ViewChannel) &&
+			p.id !== SERVICE_ROLE_ID &&
+			p.id !== client.user.id
+		  )?.id;
+
+		  if (!customerId) {
+			return i.reply({ content: "❌ 無法識別玩家", ephemeral: true });
+		  }
+		  if (i.user.id !== customerId) {
+		  return i.reply({ content: "❌ 只有玩家本人可以送禮", ephemeral: true });
+		}
+
+		  const priceNum = parseInt(price);
+
+		  const balance = await getBalance(customerId);
+
+		  if (balance < priceNum) {
+			return i.reply({ content: "❌ 餘額不足", ephemeral: true });
+		  }
+
+
+		  const newUserBalance = await updateBalance(customerId, -priceNum);
+
+		  const bossIncome = Math.floor(priceNum * 0.9);
+		  await updateBalance(boss, bossIncome);
+
+		  await i.channel.send({
+content: `🎁 送禮成功！
+👤 玩家：<@${customerId}>
+👤 陪陪：<@${boss}>
+💰 禮物金額：${priceNum} 元
+💎 陪陪獲得：${bossIncome} 元
+💵 玩家剩餘：${newUserBalance} 元`
+		  });
+
+		  await set(ref(db, `giftTemp/${i.channel.id}`), null);
+
+		  return i.reply({ content: "✅ 已完成送禮", ephemeral: true });
+		}
+    }
+	if (i.isStringSelectMenu()) {
+
+	  if (i.customId === "gift_select_item") {
+		await set(ref(db, `giftTemp/${i.channel.id}/price`), i.values[0]);
+		return i.reply({
+		  content: `✅ 已選擇禮物（${i.values[0]} 元）`,
+		  ephemeral: true
+		});
+	  }
+
+	  if (i.customId === "gift_select_boss") {
+		await set(ref(db, `giftTemp/${i.channel.id}/boss`), i.values[0]);
+		return i.reply({
+		  content: `✅ 已選擇陪陪`,
+		  ephemeral: true
+		});
+	  }
+	}
+    // ===== Modal =====
+    if (i.isModalSubmit()) {
 
       if (i.customId.startsWith("rate_modal_")) {
         await i.deferReply({ ephemeral: true });
