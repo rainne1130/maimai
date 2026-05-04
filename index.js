@@ -3,8 +3,7 @@ const {
   Client, GatewayIntentBits, Events, REST, Routes,
   SlashCommandBuilder, ChannelType, PermissionFlagsBits,
   ActionRowBuilder, ButtonBuilder, ButtonStyle,
-  ModalBuilder, TextInputBuilder, TextInputStyle,
-  StringSelectMenuBuilder
+  ModalBuilder, TextInputBuilder, TextInputStyle
 } = require('discord.js');
 
 const { initializeApp } = require('firebase/app');
@@ -63,7 +62,7 @@ const commands = [
     .setName('charge')
     .setDescription('扣款')
     .addUserOption(o => o.setName('user').setDescription('玩家').setRequired(true))
-    .addIntegerOption(o => o.setName('amount').setDescription('金額').setRequired(true))
+    .addIntegerOption(o => o.setName('amount').setDescription('金額').setRequired(true)),
 ];
 
 // ===== 註冊 =====
@@ -377,11 +376,12 @@ client.on(Events.InteractionCreate, async (i) => {
 				.setStyle(TextInputStyle.Short)
 			),
 			new ActionRowBuilder().addComponents(
-			  new TextInputBuilder()
-				.setCustomId("amount")
-				.setLabel("輸入禮物金額")
-				.setRequired(true)
-				.setStyle(TextInputStyle.Short)
+			new TextInputBuilder()
+			  .setCustomId("giftName")
+			  .setLabel("輸入禮物名稱")
+			  .setPlaceholder("例如：布丁")
+			  .setRequired(true)
+			  .setStyle(TextInputStyle.Short)
 			)
 		  );
 
@@ -394,41 +394,32 @@ client.on(Events.InteractionCreate, async (i) => {
       if (i.customId === "gift_direct_modal") {
 
 		  const rawTarget = i.fields.getTextInputValue("target");
-		  const amount = parseInt(i.fields.getTextInputValue("amount"));
-
-		  if (isNaN(amount) || amount <= 0)
-			return i.reply({ content: "❌ 金額錯誤", ephemeral: true });
+		  const giftName = i.fields.getTextInputValue("giftName");
 
 		  const match = rawTarget.match(/<@!?(\d+)>/);
 		  if (!match)
 			return i.reply({ content: "❌ 請正確 @玩家", ephemeral: true });
 
 		  const targetId = match[1];
+
 		  const targetMember = await i.guild.members.fetch(targetId).catch(() => null);
 
-			if (!targetMember || !targetMember.roles.cache.has(SERVICE_ROLE_ID)) {
-			  return i.reply({
-				content: "❌ 只能送禮給陪陪",
-				ephemeral: true
-			  });
-			}
-
-		  const balance = await getBalance(i.user.id);
-		  if (balance < amount)
-			return i.reply({ content: "❌ 餘額不足", ephemeral: true });
-
-		  const newBalance = await updateBalance(i.user.id, -amount);
+		  if (!targetMember || !targetMember.roles.cache.has(SERVICE_ROLE_ID)) {
+			return i.reply({
+			  content: "❌ 只能送禮給陪陪",
+			  ephemeral: true
+			});
+		  }
 
 		  await i.channel.send({
-			content: `🎁 玩家 ${i.user} 送給了 <@${targetId}> 價值 ${amount} 元的禮物！`
+			content: `🎁 感謝玩家 ${i.user} 送給了 <@${targetId}> 【${giftName}】！`
 		  });
 
 		  return i.reply({
 			content:
 		`🎁 送禮成功！
-		👤 對象：<@${targetId}>
-		💰 金額：${amount} 元
-		💵 剩餘餘額：${newBalance} 元`,
+		👤 接收對象：<@${targetId}>
+		🎁 禮物名稱：${giftName}`,
 			ephemeral: true
 		  });
 		}
@@ -503,13 +494,7 @@ ${content}
         content = `💻 代打單
 段位：${i.fields.getTextInputValue("rank")}`;
       }
-
-      if (i.customId === "gift_modal") {
-        content = `🎁 禮物單
-禮物：${i.fields.getTextInputValue("item")}
-對象：${i.fields.getTextInputValue("target")}`;
-      }
-
+	  
       await channel.send({
         content: `<@&${SERVICE_ROLE_ID}>
 
