@@ -353,7 +353,11 @@ client.on(Events.InteractionCreate, async (i) => {
 			new ButtonBuilder().setCustomId('rate_5').setLabel('⭐⭐⭐⭐⭐').setStyle(ButtonStyle.Success)
 		  );
 
-		  await i.reply({ content: "請為本次服務評價⭐（3秒後關閉工單）", components: [row], ephemeral: true });
+		  await i.reply({
+			content: "請為本次服務評價⭐",
+			components: [row],
+			ephemeral: true
+		  });
 
 		  setTimeout(async () => {
 			try {
@@ -370,12 +374,10 @@ client.on(Events.InteractionCreate, async (i) => {
 				await voice.delete().catch(() => {});
 			  }
 
-			  await i.channel.delete().catch(() => {});
-
 			} catch (err) {
-			  console.error("刪除工單失敗:", err);
+			  console.error("刪除語音失敗:", err);
 			}
-		  }, 3000); // 3秒
+		  }, 5000);
 
 		}
 
