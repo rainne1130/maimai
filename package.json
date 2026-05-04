@@ -1,0 +1,15 @@
+{
+  "name": "maimai-bot",
+  "version": "1.0.0",
+  "description": "Discord bot with Firebase",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.26.4",
+    "dotenv": "^17.4.2",
+    "firebase": "^12.12.1",
+    "firebase-admin": "^13.8.0"
+  }
+}
