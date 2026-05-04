@@ -8,6 +8,8 @@ const {
 
 const { initializeApp } = require('firebase/app');
 const { getDatabase, ref, get, set, runTransaction } = require('firebase/database');
+const TICKET_CATEGORY_ID = "1500721404201664562";
+const VOICE_CATEGORY_ID = "1495429606701007001";
 
 // ===== Firebase =====
 const firebaseConfig = {
@@ -265,6 +267,7 @@ client.on(Events.InteractionCreate, async (i) => {
 		  const voiceChannel = await i.guild.channels.create({
 			name: `語音-${i.channel.name}`,
 			type: ChannelType.GuildVoice,
+			parent: VOICE_CATEGORY_ID,
 
 			permissionOverwrites: [
 			  {
@@ -342,18 +345,40 @@ client.on(Events.InteractionCreate, async (i) => {
 
       if (i.customId === "close") {
 
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('rate_1').setLabel('⭐').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId('rate_2').setLabel('⭐⭐').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId('rate_3').setLabel('⭐⭐⭐').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId('rate_4').setLabel('⭐⭐⭐⭐').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId('rate_5').setLabel('⭐⭐⭐⭐⭐').setStyle(ButtonStyle.Success)
-        );
+		  const row = new ActionRowBuilder().addComponents(
+			new ButtonBuilder().setCustomId('rate_1').setLabel('⭐').setStyle(ButtonStyle.Secondary),
+			new ButtonBuilder().setCustomId('rate_2').setLabel('⭐⭐').setStyle(ButtonStyle.Secondary),
+			new ButtonBuilder().setCustomId('rate_3').setLabel('⭐⭐⭐').setStyle(ButtonStyle.Secondary),
+			new ButtonBuilder().setCustomId('rate_4').setLabel('⭐⭐⭐⭐').setStyle(ButtonStyle.Secondary),
+			new ButtonBuilder().setCustomId('rate_5').setLabel('⭐⭐⭐⭐⭐').setStyle(ButtonStyle.Success)
+		  );
 
-        return i.reply({ content: "請為本次服務評價⭐", components: [row], ephemeral: true });
-      }
+		  await i.reply({ content: "請為本次服務評價⭐（3秒後關閉工單）", components: [row], ephemeral: true });
 
-      // ===== 表單 =====
+		  setTimeout(async () => {
+			try {
+
+			  const ticketName = i.channel.name;
+
+			  const voice = i.guild.channels.cache.find(
+				c =>
+				  c.type === ChannelType.GuildVoice &&
+				  c.name === `語音-${ticketName}`
+			  );
+
+			  if (voice) {
+				await voice.delete().catch(() => {});
+			  }
+
+			  await i.channel.delete().catch(() => {});
+
+			} catch (err) {
+			  console.error("刪除工單失敗:", err);
+			}
+		  }, 3000); // 3秒
+
+		}
+
       const makeInput = (id, label, style) =>
         new ActionRowBuilder().addComponents(
           new TextInputBuilder().setCustomId(id).setLabel(label).setRequired(true).setStyle(style)
@@ -450,6 +475,7 @@ ${content}
       const channel = await i.guild.channels.create({
         name: `奈奈電競-${ticketId}`,
         type: ChannelType.GuildText,
+		parent: TICKET_CATEGORY_ID,
         permissionOverwrites: [
           { id: i.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
           { id: i.user.id, allow: [PermissionFlagsBits.ViewChannel] },
