@@ -263,7 +263,7 @@ client.on(Events.InteractionCreate, async (i) => {
 		  }
 
 		  const voiceChannel = await i.guild.channels.create({
-			name: 語音-${i.channel.name},
+			name: `語音-${i.channel.name}`,
 			type: ChannelType.GuildVoice,
 
 			permissionOverwrites: [
