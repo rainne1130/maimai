@@ -71,12 +71,12 @@ const commands = [
 		o.setName('user')
 		 .setDescription('選擇陪陪')
 		 .setRequired(true)
-	  ),
+	  )
 	  .addStringOption(o =>
 		o.setName('gift')
 		 .setDescription('禮物名稱')
 		 .setRequired(true)
-	  ),
+	  )
 ];
 
 // ===== 註冊 =====
@@ -430,7 +430,7 @@ client.on(Events.InteractionCreate, async (i) => {
 				.setPlaceholder("@某某陪陪")
 				.setRequired(true)
 				.setStyle(TextInputStyle.Short)
-			)
+			),
 			new ActionRowBuilder().addComponents(
 			new TextInputBuilder()
 			  .setCustomId("giftName")
