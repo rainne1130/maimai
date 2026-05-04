@@ -49,36 +49,36 @@ const commands = [
   .setDescription('發送工單面板'),
   new SlashCommandBuilder()
   .setName('balance')
-  .setNameLocalizations({ 'zh-TW': '目前Q幣' })
+  .setNameLocalizations({ 'zh-TW': '目前q幣' })
   .setDescription('查詢餘額')
   .addUserOption(o =>
     o.setName('user')
-     .setDescription('查詢玩家餘額Q幣（管理員功能）')
+     .setDescription('查詢玩家餘額q幣（管理員功能）')
      .setRequired(false)
   ),
   new SlashCommandBuilder()
     .setName('total')
-	.setNameLocalizations({ 'zh-TW': '累積Q幣' })
+	.setNameLocalizations({ 'zh-TW': '累積q幣' })
     .setDescription('查詢累積儲值')
     .addUserOption(o =>
       o.setName('user')
-       .setDescription('查詢玩家累積Q幣（管理員功能）')
+       .setDescription('查詢玩家累積q幣（管理員功能）')
        .setRequired(false)
     ),
 
   new SlashCommandBuilder()
     .setName('add')
-	.setNameLocalizations({ 'zh-TW': '儲值Q幣' })
+	.setNameLocalizations({ 'zh-TW': '儲值q幣' })
     .setDescription('儲值')
     .addUserOption(o => o.setName('user').setDescription('老闆名稱').setRequired(true))
-    .addIntegerOption(o => o.setName('amount').setDescription('Q幣金額').setRequired(true)),
+    .addIntegerOption(o => o.setName('amount').setDescription('q幣金額').setRequired(true)),
 
   new SlashCommandBuilder()
     .setName('charge')
-	.setNameLocalizations({ 'zh-TW': '扣款Q幣' })
+	.setNameLocalizations({ 'zh-TW': '扣款q幣' })
     .setDescription('扣款')
     .addUserOption(o => o.setName('user').setDescription('老闆名稱').setRequired(true))
-    .addIntegerOption(o => o.setName('amount').setDescription('Q幣金額').setRequired(true)),
+    .addIntegerOption(o => o.setName('amount').setDescription('q幣金額').setRequired(true)),
 	
 	new SlashCommandBuilder()
 	  .setName('gift')
