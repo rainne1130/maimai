@@ -239,9 +239,11 @@ client.on(Events.InteractionCreate, async (i) => {
 		}
     }
 
-    if (i.isButton()) {
-		
-		if (i.customId === "create_voice") {
+    if (i.customId === "create_voice") {
+
+		  if (!i.member.roles.cache.has(SERVICE_ROLE_ID)) {
+			return i.reply({ content: "❌ 只有客服可以建立語音頻道", ephemeral: true });
+		  }
 
 		  const customerId = i.channel.permissionOverwrites.cache.find(p =>
 			p.allow.has(PermissionFlagsBits.ViewChannel) &&
@@ -257,7 +259,7 @@ client.on(Events.InteractionCreate, async (i) => {
 			c =>
 			  c.type === ChannelType.GuildVoice &&
 			  c.name === `語音-${i.channel.name}` &&
-			  c.parentId === i.channel.parentId
+			  c.parentId === VOICE_CATEGORY_ID
 		  );
 
 		  if (existing) {
@@ -289,11 +291,11 @@ client.on(Events.InteractionCreate, async (i) => {
 			]
 		  });
 
-		  return i.reply({
-			content: `🔊 語音頻道已建立：${voiceChannel}`,
-			ephemeral: true
-		  });
-		}
+			return i.reply({
+				content: `🔊 語音頻道已建立：${voiceChannel}`,
+				ephemeral: true
+			});
+	}
 
       if (i.customId.startsWith("rate_")) {
 
