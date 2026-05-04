@@ -100,10 +100,10 @@ const commands = [
 		o.setName('gift')
 		 .setDescription('禮物名稱')
 		 .setRequired(true)
-	  )
+	  ),
 	new SlashCommandBuilder()
 	  .setName('reset_total')
-	  .setNameLocalizations({ 'zh-TW': '每月清除總金額' })
+	  .setNameLocalizations({ 'zh-TW': '清除總金額' })
 	  .setDescription('清除累積儲值')
 	  .addUserOption(o =>
 		o.setName('user')
@@ -114,6 +114,15 @@ const commands = [
 		o.setName('role')
 		 .setDescription('指定身分組')
 		 .setRequired(false)
+	  ),
+	new SlashCommandBuilder()
+	  .setName('total_rank')
+	  .setNameLocalizations({ 'zh-TW': '總金額排行榜' })
+	  .setDescription('累積儲值排行榜')
+	  .addRoleOption(o =>
+		o.setName('role')
+		 .setDescription('選擇身分組')
+		 .setRequired(true)
 	  ),
 ];
 
@@ -373,6 +382,59 @@ return i.reply({ embeds: [embed], ephemeral: true });
 			  ephemeral: true
 			});
 		  }
+		}
+		
+		if (i.commandName === "total_rank") {
+			
+		  await i.guild.members.fetch(i.user.id);
+
+		  if (!i.member.roles.cache.has(SERVICE_ROLE_ID)) {
+			return i.reply({ content: "❌ 沒有權限", ephemeral: true });
+		  }
+
+		  const role = i.options.getRole("role");
+
+		  await i.guild.members.fetch();
+
+		  const members = i.guild.members.cache.filter(m =>
+			m.roles.cache.has(role.id)
+		  );
+
+		  if (members.size === 0) {
+			return i.reply({
+			  content: "❌ 該身分組沒有成員",
+			  ephemeral: true
+			});
+		  }
+
+		  const data = [];
+
+		  for (const member of members.values()) {
+			const total = await getRechargeTotal(member.id);
+			data.push({
+			  id: member.id,
+			  name: member.displayName,
+			  total
+			});
+		  }
+
+		  data.sort((a, b) => b.total - a.total);
+
+		  const top10 = data.slice(0, 10);
+
+		  let desc = "";
+
+		  top10.forEach((u, index) => {
+			desc += `#${index + 1} 👤 <@${u.id}> - 💎 ${u.total} 元\n`;
+		  });
+
+		  const embed = new EmbedBuilder()
+			.setTitle(`🏆 ${role.name} 累積儲值排行榜 TOP 10`)
+			.setDescription(desc || "目前沒有資料")
+			.setColor(0xFFD700)
+			.setTimestamp();
+
+		  return i.reply({ embeds: [embed] });
 		}
     }
 
