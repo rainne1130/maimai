@@ -443,10 +443,8 @@ return i.reply({ embeds: [embed], ephemeral: true });
 	  
 	  if (i.customId === "gift") {
 
-		  const ticketId = await getNextTicketId();
-
 		  const channel = await i.guild.channels.create({
-			name: `禮物_${ticketId}`,
+			name: `${i.user.id}`,
 			type: ChannelType.GuildText,
 			parent: TICKET_CATEGORY_ID,
 			permissionOverwrites: [
