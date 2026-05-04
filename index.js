@@ -178,6 +178,37 @@ client.on(Events.InteractionCreate, async (i) => {
 		  const user = i.options.getUser("user");
 		  const amount = i.options.getInteger("amount");
 
+		  if (!user) {
+			return i.reply({ content: "❌ 玩家不存在", ephemeral: true });
+		  }
+
+		  if (amount == null || amount <= 0) {
+			return i.reply({ content: "❌ 金額必須大於 0", ephemeral: true });
+		  }
+
+		  if (!i.member.roles.cache.has(SERVICE_ROLE_ID)) {
+			return i.reply({ content: "❌ 您沒有權限", ephemeral: true });
+		  }
+
+		  await updateBalance(user.id, amount);
+		  await addRechargeTotal(user.id, amount);
+
+		  const total = await getRechargeTotal(user.id);
+
+		  return i.reply({
+			content:
+		`✅ 恭喜您加值成功!!
+		👤 玩家名稱：${user.username}
+		💰 本次加值：${amount} 元
+		💎 累積儲值：${total} 元`
+		  });
+		}
+
+      if (i.commandName === "charge") {
+
+		  const user = i.options.getUser("user");
+		  const amount = i.options.getInteger("amount");
+
 		  if (!user)
 			return i.reply({ content: "❌ 玩家不存在", ephemeral: true });
 
@@ -185,31 +216,81 @@ client.on(Events.InteractionCreate, async (i) => {
 			return i.reply({ content: "❌ 金額必須大於 0", ephemeral: true });
 
 		  if (!i.member.roles.cache.has(SERVICE_ROLE_ID))
-			return i.reply({ content: "❌ 您沒有權限", ephemeral: true });
+			return i.reply({ content: "❌ 您目前沒有權限", ephemeral: true });
 
-		  await updateBalance(user.id, amount);
-		  await addRechargeTotal(user.id, amount);
+		  const balance = await getBalance(user.id);
 
-		  return i.reply(`✅ 已成功加值，玩家: ${user} 儲值金額為: ${amount} 元`);
+		  if (balance < amount)
+			return i.reply({ content: "❌ 您目前餘額不足", ephemeral: true });
+
+		  await updateBalance(user.id, -amount);
+
+		  const newBalance = await getBalance(user.id);
+
+		  return i.reply({
+			content:
+		`💸 扣款成功!!
+		👤 玩家名稱：${user.username}
+		💰 扣款金額：${amount} 元
+		📉 剩餘金額：${newBalance} 元`
+		  });
 		}
-
-      if (i.commandName === "charge") {
-        if (!i.member.roles.cache.has(SERVICE_ROLE_ID))
-          return i.reply({ content: "❌ 您目前沒有權限", ephemeral: true });
-
-        const user = i.options.getUser("user");
-        const amount = i.options.getInteger("amount");
-        const balance = await getBalance(user.id);
-
-        if (balance < amount)
-          return i.reply({ content: "❌ 您目前餘額不足", ephemeral: true });
-
-        await updateBalance(user.id, -amount);
-        return i.reply(`💸 已成功扣款，玩家: ${user} 扣款金額為: ${amount} 元`);
-      }
     }
 
     if (i.isButton()) {
+		
+		if (i.customId === "create_voice") {
+
+		  const customerId = i.channel.permissionOverwrites.cache.find(p =>
+			p.allow.has(PermissionFlagsBits.ViewChannel) &&
+			p.id !== SERVICE_ROLE_ID &&
+			p.id !== client.user.id
+		  )?.id;
+
+		  if (!customerId) {
+			return i.reply({ content: "❌ 無法識別工單客戶", ephemeral: true });
+		  }
+
+		  const existing = i.guild.channels.cache.find(
+			c =>
+			  c.type === ChannelType.GuildVoice &&
+			  c.name === `語音-${i.channel.name}` &&
+			  c.parentId === i.channel.parentId
+		  );
+
+		  if (existing) {
+			return i.reply({ content: "❌ 已經建立過語音頻道", ephemeral: true });
+		  }
+
+		  const voiceChannel = await i.guild.channels.create({
+			name: 語音-${i.channel.name},
+			type: ChannelType.GuildVoice,
+
+			permissionOverwrites: [
+			  {
+				id: i.guild.id,
+				deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect]
+			  },
+			  {
+				id: customerId,
+				allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak]
+			  },
+			  {
+				id: SERVICE_ROLE_ID,
+				allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak]
+			  },
+			  {
+				id: client.user.id,
+				allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect]
+			  }
+			]
+		  });
+
+		  return i.reply({
+			content: `🔊 語音頻道已建立：${voiceChannel}`,
+			ephemeral: true
+		  });
+		}
 
       if (i.customId.startsWith("rate_")) {
 
@@ -367,7 +448,7 @@ ${content}
       const ticketId = await getNextTicketId();
 
       const channel = await i.guild.channels.create({
-        name: `ticket-${ticketId}`,
+        name: `奈奈電競-${ticketId}`,
         type: ChannelType.GuildText,
         permissionOverwrites: [
           { id: i.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
@@ -378,6 +459,7 @@ ${content}
       });
 
       const row = new ActionRowBuilder().addComponents(
+		new ButtonBuilder().setCustomId('create_voice').setLabel('🔊 建立語音頻道').setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId('gift_inside').setLabel('🎁 我要送禮').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('close').setLabel('🔒 我要結單').setStyle(ButtonStyle.Danger)
       );
@@ -414,7 +496,7 @@ ${content}
         content: `<@&${SERVICE_ROLE_ID}>
 
 📌 工單 #${ticketId}
-👤 客戶：${i.user}
+👤 玩家名稱：${i.user}
 
 ${content}`,
         components: [row]
