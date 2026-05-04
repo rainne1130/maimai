@@ -484,61 +484,115 @@ return i.reply({ embeds: [embed], ephemeral: true });
       }
 
       if (i.customId.startsWith("rate_")) {
-        const ratedRef = ref(db, `rated/${i.channel.id}/${i.user.id}`);
 
-        const result = await runTransaction(ratedRef, (current) => {
-          if (current) return;
-          return true;
-        });
+		  const snap = await get(ref(db, `ratingTarget/${i.channel.id}`));
+		  const allowedUserId = snap.exists() ? snap.val() : null;
 
-        if (!result.committed) {
-          return i.reply({ content: "❌ 你已經評價過了", ephemeral: true });
-        }
+		  if (!allowedUserId || i.user.id !== allowedUserId) {
+			return i.reply({
+			  content: "❌ 只有開單玩家可以評價",
+			  ephemeral: true
+			});
+		  }
 
-        const score = i.customId.split("_")[1];
+		  const ratedRef = ref(db, `rated/${i.channel.id}/${i.user.id}`);
 
-        const modal = new ModalBuilder()
-          .setCustomId(`rate_modal_${score}`)
-          .setTitle("填寫評價");
+		  const result = await runTransaction(ratedRef, (current) => {
+			if (current) return;
+			return true;
+		  });
 
-        modal.addComponents(
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("target").setLabel("給予評價對象").setRequired(true).setStyle(TextInputStyle.Short)),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("content").setLabel("評價內容").setRequired(true).setStyle(TextInputStyle.Paragraph)),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("anonymous").setLabel("請問是否匿名？(是/否)").setRequired(true).setStyle(TextInputStyle.Short))
-        );
+		  if (!result.committed) {
+			return i.reply({
+			  content: "❌ 你已經評價過了",
+			  ephemeral: true
+			});
+		  }
 
-        return i.showModal(modal);
-      }
+		  const score = i.customId.split("_")[1];
+
+		  const modal = new ModalBuilder()
+			.setCustomId(`rate_modal_${score}`)
+			.setTitle("填寫評價");
+
+		  modal.addComponents(
+			new ActionRowBuilder().addComponents(
+			  new TextInputBuilder()
+				.setCustomId("target")
+				.setLabel("給予評價對象")
+				.setRequired(true)
+				.setStyle(TextInputStyle.Short)
+			),
+			new ActionRowBuilder().addComponents(
+			  new TextInputBuilder()
+				.setCustomId("content")
+				.setLabel("你覺得本次陪玩體驗怎麼樣？")
+				.setRequired(true)
+				.setStyle(TextInputStyle.Paragraph)
+			),
+			new ActionRowBuilder().addComponents(
+			  new TextInputBuilder()
+				.setCustomId("anonymous")
+				.setLabel("是否需要匿名評價？(是/否)")
+				.setRequired(true)
+				.setStyle(TextInputStyle.Short)
+			)
+		  );
+
+		  return i.showModal(modal);
+		}
       if (i.customId === "close") {
 
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('rate_1').setLabel('⭐').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId('rate_2').setLabel('⭐⭐').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId('rate_3').setLabel('⭐⭐⭐').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId('rate_4').setLabel('⭐⭐⭐⭐').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId('rate_5').setLabel('⭐⭐⭐⭐⭐').setStyle(ButtonStyle.Success)
-        );
+		  if (!i.member.roles.cache.has(SERVICE_ROLE_ID)) {
+			return i.reply({
+			  content: "❌ 只有客服或陪陪可以結單",
+			  ephemeral: true
+			});
+		  }
 
-        await i.reply({ content: "請為本次服務評價⭐", components: [row], ephemeral: true });
+		  const customerId = i.channel.permissionOverwrites.cache.find(p =>
+			p.allow.has(PermissionFlagsBits.ViewChannel) &&
+			p.id !== SERVICE_ROLE_ID &&
+			p.id !== client.user.id
+		  )?.id;
 
-        setTimeout(async () => {
-          try {
-            const ticketName = i.channel.name;
+		  if (!customerId) {
+			return i.reply({ content: "❌ 無法識別玩家", ephemeral: true });
+		  }
 
-            const voice = i.guild.channels.cache.find(
-              c =>
-                c.type === ChannelType.GuildVoice &&
-                c.name === `語音-${ticketName}`
-            );
+		  await set(ref(db, `ratingTarget/${i.channel.id}`), customerId);
 
-            if (voice) {
-              await voice.delete().catch(() => {});
-            }
-          } catch (err) {
-            console.error("刪除語音失敗:", err);
-          }
-        }, 5000);
-      }
+		  const row = new ActionRowBuilder().addComponents(
+			new ButtonBuilder().setCustomId('rate_1').setLabel('⭐').setStyle(ButtonStyle.Secondary),
+			new ButtonBuilder().setCustomId('rate_2').setLabel('⭐⭐').setStyle(ButtonStyle.Secondary),
+			new ButtonBuilder().setCustomId('rate_3').setLabel('⭐⭐⭐').setStyle(ButtonStyle.Secondary),
+			new ButtonBuilder().setCustomId('rate_4').setLabel('⭐⭐⭐⭐').setStyle(ButtonStyle.Secondary),
+			new ButtonBuilder().setCustomId('rate_5').setLabel('⭐⭐⭐⭐⭐').setStyle(ButtonStyle.Success)
+		  );
+
+		  await i.reply({
+			content: `⭐ 請為本次服務評價（僅 <@${customerId}> 可操作）`,
+			components: [row]
+		  });
+
+		  setTimeout(async () => {
+			try {
+			  const ticketName = i.channel.name;
+
+			  const voice = i.guild.channels.cache.find(
+				c =>
+				  c.type === ChannelType.GuildVoice &&
+				  c.name === `語音-${ticketName}`
+			  );
+
+			  if (voice) {
+				await voice.delete().catch(() => {});
+			  }
+			} catch (err) {
+			  console.error("刪除語音失敗:", err);
+			}
+		  }, 5000);
+		}
 
       // === 開單按鈕 ===
       const makeInput = (id, label, style) =>
