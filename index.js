@@ -115,6 +115,7 @@ async function getNextTicketId() {
 client.on(Events.InteractionCreate, async (i) => {
   try {
 
+    // ===== Slash 指令 =====
     if (i.isChatInputCommand()) {
 
       if (i.commandName === "panel") {
@@ -124,181 +125,131 @@ client.on(Events.InteractionCreate, async (i) => {
           new ButtonBuilder().setCustomId('boost').setLabel('💻 代打訂單').setStyle(ButtonStyle.Secondary),
           new ButtonBuilder().setCustomId('gift').setLabel('🎁 送禮物').setStyle(ButtonStyle.Danger)
         );
-
         return i.reply({ content: "💖 奈奈客服中心\n請選擇服務類型", components: [row] });
       }
 
       if (i.commandName === "balance") {
+        const target = i.options.getUser("user");
 
-		  const target = i.options.getUser("user");
+        if (target) {
+          if (!i.member.roles.cache.has(SERVICE_ROLE_ID)) {
+            return i.reply({ content: "❌ 你沒有權限查詢他人餘額", ephemeral: true });
+          }
+          const balance = await getBalance(target.id);
+          return i.reply({ content: `💰 ${target} 的餘額為：${balance} 元`, ephemeral: true });
+        }
 
-		  if (target) {
+        const balance = await getBalance(i.user.id);
+        return i.reply({ content: `💰 你的餘額為：${balance} 元`, ephemeral: true });
+      }
 
-			if (!i.member.roles.cache.has(SERVICE_ROLE_ID)) {
-			  return i.reply({ content: "❌ 你沒有權限查詢他人餘額", ephemeral: true });
-			}
+      if (i.commandName === "total") {
+        const target = i.options.getUser("user");
 
-			const balance = await getBalance(target.id);
-			return i.reply({
-			  content: `💰 ${target} 的餘額為：${balance} 元`,
-			  ephemeral: true
-			});
-		  }
+        if (target) {
+          if (!i.member.roles.cache.has(SERVICE_ROLE_ID)) {
+            return i.reply({ content: "❌ 您沒有權限查詢他人累積", ephemeral: true });
+          }
+          const total = await getRechargeTotal(target.id);
+          return i.reply({ content: `💎 ${target} 的累積儲值為： ${total} 元`, ephemeral: true });
+        }
 
-		  const balance = await getBalance(i.user.id);
-		  return i.reply({
-			content: `💰 你的餘額為：${balance} 元`,
-			ephemeral: true
-		  });
-		}
-		
-		if (i.commandName === "total") {
-
-		  const target = i.options.getUser("user");
-
-		  if (target) {
-			if (!i.member.roles.cache.has(SERVICE_ROLE_ID)) {
-			  return i.reply({ content: "❌ 您沒有權限查詢他人累積", ephemeral: true });
-			}
-
-			const total = await getRechargeTotal(target.id);
-			return i.reply({
-			  content: `💎 ${target} 的累積儲值為： ${total} 元`,
-			  ephemeral: true
-			});
-		  }
-
-		  const total = await getRechargeTotal(i.user.id);
-		  return i.reply({
-			content: `💎 您的累積儲值為： ${total} 元`,
-			ephemeral: true
-		  });
-		}
+        const total = await getRechargeTotal(i.user.id);
+        return i.reply({ content: `💎 您的累積儲值為： ${total} 元`, ephemeral: true });
+      }
 
       if (i.commandName === "add") {
+        const user = i.options.getUser("user");
+        const amount = i.options.getInteger("amount");
 
-		  const user = i.options.getUser("user");
-		  const amount = i.options.getInteger("amount");
+        if (!user) return i.reply({ content: "❌ 玩家不存在", ephemeral: true });
+        if (amount == null || amount <= 0) return i.reply({ content: "❌ 金額必須大於 0", ephemeral: true });
+        if (!i.member.roles.cache.has(SERVICE_ROLE_ID)) return i.reply({ content: "❌ 您沒有權限", ephemeral: true });
 
-		  if (!user) {
-			return i.reply({ content: "❌ 玩家不存在", ephemeral: true });
-		  }
+        await updateBalance(user.id, amount);
+        await addRechargeTotal(user.id, amount);
 
-		  if (amount == null || amount <= 0) {
-			return i.reply({ content: "❌ 金額必須大於 0", ephemeral: true });
-		  }
+        const total = await getRechargeTotal(user.id);
 
-		  if (!i.member.roles.cache.has(SERVICE_ROLE_ID)) {
-			return i.reply({ content: "❌ 您沒有權限", ephemeral: true });
-		  }
-
-		  await updateBalance(user.id, amount);
-		  await addRechargeTotal(user.id, amount);
-
-		  const total = await getRechargeTotal(user.id);
-
-		  return i.reply({
-			content:
-		`✅ 恭喜您加值成功!!
-		👤 玩家名稱：${user.username}
-		💰 本次加值：${amount} 元
-		💎 累積儲值：${total} 元`
-		  });
-		}
+        return i.reply({
+          content:
+`✅ 恭喜您加值成功!!
+👤 玩家名稱：${user.username}
+💰 本次加值：${amount} 元
+💎 累積儲值：${total} 元`
+        });
+      }
 
       if (i.commandName === "charge") {
+        const user = i.options.getUser("user");
+        const amount = i.options.getInteger("amount");
 
-		  const user = i.options.getUser("user");
-		  const amount = i.options.getInteger("amount");
+        if (!user) return i.reply({ content: "❌ 玩家不存在", ephemeral: true });
+        if (amount == null || amount <= 0) return i.reply({ content: "❌ 金額必須大於 0", ephemeral: true });
+        if (!i.member.roles.cache.has(SERVICE_ROLE_ID)) return i.reply({ content: "❌ 您目前沒有權限", ephemeral: true });
 
-		  if (!user)
-			return i.reply({ content: "❌ 玩家不存在", ephemeral: true });
+        const balance = await getBalance(user.id);
+        if (balance < amount) return i.reply({ content: "❌ 您目前餘額不足", ephemeral: true });
 
-		  if (amount == null || amount <= 0)
-			return i.reply({ content: "❌ 金額必須大於 0", ephemeral: true });
+        await updateBalance(user.id, -amount);
+        const newBalance = await getBalance(user.id);
 
-		  if (!i.member.roles.cache.has(SERVICE_ROLE_ID))
-			return i.reply({ content: "❌ 您目前沒有權限", ephemeral: true });
-
-		  const balance = await getBalance(user.id);
-
-		  if (balance < amount)
-			return i.reply({ content: "❌ 您目前餘額不足", ephemeral: true });
-
-		  await updateBalance(user.id, -amount);
-
-		  const newBalance = await getBalance(user.id);
-
-		  return i.reply({
-			content:
-		`💸 扣款成功!!
-		👤 玩家名稱：${user.username}
-		💰 扣款金額：${amount} 元
-		📉 剩餘金額：${newBalance} 元`
-		  });
-		}
+        return i.reply({
+          content:
+`💸 扣款成功!!
+👤 玩家名稱：${user.username}
+💰 扣款金額：${amount} 元
+📉 剩餘金額：${newBalance} 元`
+        });
+      }
     }
 
-    if (i.customId === "create_voice") {
+    // ===== Button =====
+    if (i.isButton()) {
 
-		  if (!i.member.roles.cache.has(SERVICE_ROLE_ID)) {
-			return i.reply({ content: "❌ 只有客服可以建立語音頻道", ephemeral: true });
-		  }
+      if (i.customId === "create_voice") {
 
-		  const customerId = i.channel.permissionOverwrites.cache.find(p =>
-			p.allow.has(PermissionFlagsBits.ViewChannel) &&
-			p.id !== SERVICE_ROLE_ID &&
-			p.id !== client.user.id
-		  )?.id;
+        if (!i.member.roles.cache.has(SERVICE_ROLE_ID)) {
+          return i.reply({ content: "❌ 只有客服可以建立語音頻道", ephemeral: true });
+        }
 
-		  if (!customerId) {
-			return i.reply({ content: "❌ 無法識別工單客戶", ephemeral: true });
-		  }
+        const customerId = i.channel.permissionOverwrites.cache.find(p =>
+          p.allow.has(PermissionFlagsBits.ViewChannel) &&
+          p.id !== SERVICE_ROLE_ID &&
+          p.id !== client.user.id
+        )?.id;
 
-		  const existing = i.guild.channels.cache.find(
-			c =>
-			  c.type === ChannelType.GuildVoice &&
-			  c.name === `語音-${i.channel.name}` &&
-			  c.parentId === VOICE_CATEGORY_ID
-		  );
+        if (!customerId) {
+          return i.reply({ content: "❌ 無法識別工單客戶", ephemeral: true });
+        }
 
-		  if (existing) {
-			return i.reply({ content: "❌ 已經建立過語音頻道", ephemeral: true });
-		  }
+        const existing = i.guild.channels.cache.find(
+          c =>
+            c.type === ChannelType.GuildVoice &&
+            c.name === `語音-${i.channel.name}` &&
+            c.parentId === VOICE_CATEGORY_ID
+        );
 
-		  const voiceChannel = await i.guild.channels.create({
-			name: `語音-${i.channel.name}`,
-			type: ChannelType.GuildVoice,
-			parent: VOICE_CATEGORY_ID,
+        if (existing) {
+          return i.reply({ content: "❌ 已經建立過語音頻道", ephemeral: true });
+        }
 
-			permissionOverwrites: [
-			  {
-				id: i.guild.id,
-				deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect]
-			  },
-			  {
-				id: customerId,
-				allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak]
-			  },
-			  {
-				id: SERVICE_ROLE_ID,
-				allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak]
-			  },
-			  {
-				id: client.user.id,
-				allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect]
-			  }
-			]
-		  });
+        const voiceChannel = await i.guild.channels.create({
+          name: `語音-${i.channel.name}`,
+          type: ChannelType.GuildVoice,
+          parent: VOICE_CATEGORY_ID,
+          permissionOverwrites: [
+            { id: i.guild.id, deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect] },
+            { id: customerId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak] },
+            { id: SERVICE_ROLE_ID, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak] },
+            { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect] }
+          ]
+        });
 
-			return i.reply({
-				content: `🔊 語音頻道已建立：${voiceChannel}`,
-				ephemeral: true
-			});
-	}
+        return i.reply({ content: `🔊 語音頻道已建立：${voiceChannel}`, ephemeral: true });
+      }
 
       if (i.customId.startsWith("rate_")) {
-
         const ratedRef = ref(db, `rated/${i.channel.id}/${i.user.id}`);
 
         const result = await runTransaction(ratedRef, (current) => {
@@ -317,72 +268,56 @@ client.on(Events.InteractionCreate, async (i) => {
           .setTitle("填寫評價");
 
         modal.addComponents(
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder().setCustomId("target").setLabel("給予評價對象").setRequired(true).setStyle(TextInputStyle.Short)
-          ),
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder().setCustomId("content").setLabel("評價內容").setRequired(true).setStyle(TextInputStyle.Paragraph)
-          ),
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder().setCustomId("anonymous").setLabel("請問是否匿名？(是/否)").setRequired(true).setStyle(TextInputStyle.Short)
-          )
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("target").setLabel("給予評價對象").setRequired(true).setStyle(TextInputStyle.Short)),
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("content").setLabel("評價內容").setRequired(true).setStyle(TextInputStyle.Paragraph)),
+          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("anonymous").setLabel("請問是否匿名？(是/否)").setRequired(true).setStyle(TextInputStyle.Short))
         );
 
         return i.showModal(modal);
       }
 
       if (i.customId === "gift_inside") {
-        const modal = new ModalBuilder()
-          .setCustomId("gift_inside_modal")
-          .setTitle("送禮");
-
+        const modal = new ModalBuilder().setCustomId("gift_inside_modal").setTitle("送禮");
         modal.addComponents(
           new ActionRowBuilder().addComponents(
             new TextInputBuilder().setCustomId("amount").setLabel("金額").setRequired(true).setStyle(TextInputStyle.Short)
           )
         );
-
         return i.showModal(modal);
       }
 
       if (i.customId === "close") {
 
-		  const row = new ActionRowBuilder().addComponents(
-			new ButtonBuilder().setCustomId('rate_1').setLabel('⭐').setStyle(ButtonStyle.Secondary),
-			new ButtonBuilder().setCustomId('rate_2').setLabel('⭐⭐').setStyle(ButtonStyle.Secondary),
-			new ButtonBuilder().setCustomId('rate_3').setLabel('⭐⭐⭐').setStyle(ButtonStyle.Secondary),
-			new ButtonBuilder().setCustomId('rate_4').setLabel('⭐⭐⭐⭐').setStyle(ButtonStyle.Secondary),
-			new ButtonBuilder().setCustomId('rate_5').setLabel('⭐⭐⭐⭐⭐').setStyle(ButtonStyle.Success)
-		  );
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('rate_1').setLabel('⭐').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('rate_2').setLabel('⭐⭐').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('rate_3').setLabel('⭐⭐⭐').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('rate_4').setLabel('⭐⭐⭐⭐').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('rate_5').setLabel('⭐⭐⭐⭐⭐').setStyle(ButtonStyle.Success)
+        );
 
-		  await i.reply({
-			content: "請為本次服務評價⭐",
-			components: [row],
-			ephemeral: true
-		  });
+        await i.reply({ content: "請為本次服務評價⭐", components: [row], ephemeral: true });
 
-		  setTimeout(async () => {
-			try {
+        setTimeout(async () => {
+          try {
+            const ticketName = i.channel.name;
 
-			  const ticketName = i.channel.name;
+            const voice = i.guild.channels.cache.find(
+              c =>
+                c.type === ChannelType.GuildVoice &&
+                c.name === `語音-${ticketName}`
+            );
 
-			  const voice = i.guild.channels.cache.find(
-				c =>
-				  c.type === ChannelType.GuildVoice &&
-				  c.name === `語音-${ticketName}`
-			  );
+            if (voice) {
+              await voice.delete().catch(() => {});
+            }
+          } catch (err) {
+            console.error("刪除語音失敗:", err);
+          }
+        }, 5000);
+      }
 
-			  if (voice) {
-				await voice.delete().catch(() => {});
-			  }
-
-			} catch (err) {
-			  console.error("刪除語音失敗:", err);
-			}
-		  }, 5000);
-
-		}
-
+      // === 開單按鈕 ===
       const makeInput = (id, label, style) =>
         new ActionRowBuilder().addComponents(
           new TextInputBuilder().setCustomId(id).setLabel(label).setRequired(true).setStyle(style)
@@ -427,25 +362,23 @@ client.on(Events.InteractionCreate, async (i) => {
       }
     }
 
+    // ===== Modal =====
     if (i.isModalSubmit()) {
 
       if (i.customId === "gift_inside_modal") {
-
         const amount = parseInt(i.fields.getTextInputValue("amount"));
         if (isNaN(amount) || amount <= 0)
-          return i.reply({ content: "❌ 金額錯誤，請再嘗試一次", ephemeral: true });
+          return i.reply({ content: "❌ 金額錯誤", ephemeral: true });
 
         const balance = await getBalance(i.user.id);
         if (balance < amount)
-          return i.reply({ content: "❌ 您目前餘額不足", ephemeral: true });
+          return i.reply({ content: "❌ 餘額不足", ephemeral: true });
 
         await updateBalance(i.user.id, -amount);
-
-        return i.reply({ content: `🎁 禮物贈送成功 ${amount} 元`, ephemeral: true });
+        return i.reply({ content: `🎁 贈送成功 ${amount} 元`, ephemeral: true });
       }
 
       if (i.customId.startsWith("rate_modal_")) {
-
         await i.deferReply({ ephemeral: true });
 
         const score = i.customId.split("_")[2];
@@ -479,7 +412,7 @@ ${content}
       const channel = await i.guild.channels.create({
         name: `奈奈電競-${ticketId}`,
         type: ChannelType.GuildText,
-		parent: TICKET_CATEGORY_ID,
+        parent: TICKET_CATEGORY_ID,
         permissionOverwrites: [
           { id: i.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
           { id: i.user.id, allow: [PermissionFlagsBits.ViewChannel] },
@@ -489,7 +422,7 @@ ${content}
       });
 
       const row = new ActionRowBuilder().addComponents(
-		new ButtonBuilder().setCustomId('create_voice').setLabel('🔊 建立語音頻道').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('create_voice').setLabel('🔊 建立語音頻道').setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId('gift_inside').setLabel('🎁 我要送禮').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('close').setLabel('🔒 我要結單').setStyle(ButtonStyle.Danger)
       );
