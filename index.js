@@ -43,38 +43,46 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds,GatewayIntentBits
 
 // ===== 指令 =====
 const commands = [
-  new SlashCommandBuilder().setName('panel').setDescription('發送工單面板'),
+  new SlashCommandBuilder()
+  .setName('panel')
+  .setNameLocalizations({ 'zh-TW': '菜單目錄' })
+  .setDescription('發送工單面板'),
   new SlashCommandBuilder()
   .setName('balance')
+  .setNameLocalizations({ 'zh-TW': '目前Q幣' })
   .setDescription('查詢餘額')
   .addUserOption(o =>
     o.setName('user')
-     .setDescription('查詢玩家餘額（管理員功能）')
+     .setDescription('查詢玩家餘額Q幣（管理員功能）')
      .setRequired(false)
   ),
   new SlashCommandBuilder()
     .setName('total')
+	.setNameLocalizations({ 'zh-TW': '累積Q幣' })
     .setDescription('查詢累積儲值')
     .addUserOption(o =>
       o.setName('user')
-       .setDescription('查詢玩家累積（管理員功能）')
+       .setDescription('查詢玩家累積Q幣（管理員功能）')
        .setRequired(false)
     ),
 
   new SlashCommandBuilder()
     .setName('add')
+	.setNameLocalizations({ 'zh-TW': '儲值Q幣' })
     .setDescription('儲值')
-    .addUserOption(o => o.setName('user').setDescription('玩家').setRequired(true))
-    .addIntegerOption(o => o.setName('amount').setDescription('金額').setRequired(true)),
+    .addUserOption(o => o.setName('user').setDescription('老闆名稱').setRequired(true))
+    .addIntegerOption(o => o.setName('amount').setDescription('Q幣金額').setRequired(true)),
 
   new SlashCommandBuilder()
     .setName('charge')
+	.setNameLocalizations({ 'zh-TW': '扣款Q幣' })
     .setDescription('扣款')
-    .addUserOption(o => o.setName('user').setDescription('玩家').setRequired(true))
-    .addIntegerOption(o => o.setName('amount').setDescription('金額').setRequired(true)),
+    .addUserOption(o => o.setName('user').setDescription('老闆名稱').setRequired(true))
+    .addIntegerOption(o => o.setName('amount').setDescription('Q幣金額').setRequired(true)),
 	
 	new SlashCommandBuilder()
 	  .setName('gift')
+	  .setNameLocalizations({ 'zh-TW': '送禮物' })
 	  .setDescription('送禮給陪陪')
 	  .addUserOption(o =>
 		o.setName('user')
@@ -222,13 +230,17 @@ client.on(Events.InteractionCreate, async (i) => {
 		  await addRechargeTotal(user.id, amount);
 		  const total = await getRechargeTotal(user.id);
 
-		  return i.reply({
-content:`✅ 恭喜您加值成功!
-👤 玩家名稱：${user.username}
+		  const embed = new EmbedBuilder()
+  .setTitle("💰 恭喜您加值成功！")
+  .setDescription(
+`👤 玩家名稱：${user.username}
 💰 本次加值金額：${amount} 元
 💵 總計剩餘金額：${newBalance} 元
 💎 累積儲值金額：${total} 元`
-		  });
+  )
+  .setColor(0xFF69B4);
+
+return i.reply({ embeds: [embed] });
 		}
 
       if (i.commandName === "charge") {
@@ -254,13 +266,17 @@ content:`✅ 恭喜您加值成功!
 
 		  const total = await getRechargeTotal(user.id);
 
-		  return i.reply({
-content:`💸 扣款成功!
-👤 玩家名稱：${user.username}
+		  const embed = new EmbedBuilder()
+  .setTitle("💸 扣款成功！")
+  .setDescription(
+`👤 玩家名稱：${user.username}
 💰 本次扣款金額：${amount} 元
 💵 總計剩餘金額：${newBalance} 元
 💎 累積儲值金額：${total} 元`
-		  });
+  )
+  .setColor(0xFF69B4);
+
+return i.reply({ embeds: [embed] });
 		}
 		if (i.commandName === "gift") {
 
@@ -276,12 +292,15 @@ content:`💸 扣款成功!
 			return i.reply({ content: result.error, ephemeral: true });
 		  }
 
-		  return i.reply({
-content:`🎁 送禮成功！
-👤 接收對象：${result.target}
-🎁 禮物名稱：${result.giftName}`,
-			ephemeral: true
-		  });
+		  const embed = new EmbedBuilder()
+  .setTitle("🎁 送禮成功！")
+  .setDescription(
+`👤 接收禮物的對象：${result.target}
+🎁 禮物名稱：${result.giftName}`
+  )
+  .setColor(0xFF69B4);
+
+return i.reply({ embeds: [embed], ephemeral: true });
 		}
     }
 
@@ -529,6 +548,7 @@ content: `🎁 禮物工單
 		  .setTitle("🎁 送禮成功！")
 		  .setDescription(
 `👤 玩家名稱：<@${customerId}>
+
 👤 陪陪名稱：<@${boss}>
 
 💰 禮物金額：${priceNum} 元
@@ -580,18 +600,24 @@ content: `🎁 禮物工單
 
         const channel = await client.channels.fetch(RATING_CHANNEL_ID);
 
-        await channel.send(`
-💎 客戶滿意好評
-
-👤 客戶：${name}
+        const embed = new EmbedBuilder()
+  .setTitle("💎 客戶滿意好評")
+  .setDescription(
+`👤 客戶：${name}
 🎯 對象：${target}
 ⭐ 評分：${"⭐".repeat(score)}
 
 📝 評價：
 ${content}
 
-📌 來自工單：${i.channel?.name || "未知"}
-`);
+📌 來自工單：${i.channel?.name || "未知"}`
+  )
+  .setColor(0xFFD700)
+  .setTimestamp();
+
+await channel.send({
+  embeds: [embed]
+});
 
         return i.editReply({ content: "✅ 評價完成" });
       }
