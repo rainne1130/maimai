@@ -4,7 +4,7 @@ const {
   SlashCommandBuilder, ChannelType, PermissionFlagsBits,
   ActionRowBuilder, ButtonBuilder, ButtonStyle,
   ModalBuilder, TextInputBuilder, TextInputStyle,
-  StringSelectMenuBuilder
+  StringSelectMenuBuilder,EmbedBuilder
 } = require('discord.js');
 
 const { initializeApp } = require('firebase/app');
@@ -21,6 +21,14 @@ const firebaseConfig = {
   storageBucket: "maimai-eec26.appspot.com",
   messagingSenderId: "127362679664",
   appId: "1:127362679664:web:15a057e23cb8df67e085b5"
+};
+const giftImages = {
+	"50": "https://cdn.discordapp.com/attachments/1495436285815427082/1500923539409080380/-1_0.png?ex=69fa3379&is=69f8e1f9&hm=2fa9425eb8d888af4c6788b8f257e02d572bfaad5ccd8ea17326225643d0421e&",
+	"500": "https://cdn.discordapp.com/attachments/1495436285815427082/1500923539409080380/-1_0.png?ex=69fa3379&is=69f8e1f9&hm=2fa9425eb8d888af4c6788b8f257e02d572bfaad5ccd8ea17326225643d0421e&",
+	"888": "https://cdn.discordapp.com/attachments/1495436285815427082/1500923539409080380/-1_0.png?ex=69fa3379&is=69f8e1f9&hm=2fa9425eb8d888af4c6788b8f257e02d572bfaad5ccd8ea17326225643d0421e&",
+	"1314": "https://cdn.discordapp.com/attachments/1495436285815427082/1500923539409080380/-1_0.png?ex=69fa3379&is=69f8e1f9&hm=2fa9425eb8d888af4c6788b8f257e02d572bfaad5ccd8ea17326225643d0421e&",
+	"9999": "https://cdn.discordapp.com/attachments/1495436285815427082/1500923539409080380/-1_0.png?ex=69fa3379&is=69f8e1f9&hm=2fa9425eb8d888af4c6788b8f257e02d572bfaad5ccd8ea17326225643d0421e&"
+	
 };
 
 const app = initializeApp(firebaseConfig);
@@ -517,14 +525,21 @@ content: `🎁 禮物工單
 		  const bossIncome = Math.floor(priceNum * 0.9);
 		  await updateBalance(boss, bossIncome);
 
-		  await i.channel.send({
-content: `🎁 送禮成功！
-👤 玩家：<@${customerId}>
-👤 陪陪：<@${boss}>
+		  const embed = new EmbedBuilder()
+		  .setTitle("🎁 送禮成功！")
+		  .setDescription(
+`👤 玩家名稱：<@${customerId}>
+👤 陪陪名稱：<@${boss}>
+
 💰 禮物金額：${priceNum} 元
-💎 陪陪獲得：${bossIncome} 元
 💵 玩家剩餘：${newUserBalance} 元`
-		  });
+		  )
+		  .setImage(giftImages[price])
+		  .setColor(0xFF69B4);
+
+		await i.channel.send({
+		  embeds: [embed]
+		});
 
 		  await set(ref(db, `giftTemp/${i.channel.id}`), null);
 
