@@ -63,6 +63,20 @@ const commands = [
     .setDescription('扣款')
     .addUserOption(o => o.setName('user').setDescription('玩家').setRequired(true))
     .addIntegerOption(o => o.setName('amount').setDescription('金額').setRequired(true)),
+	
+	new SlashCommandBuilder()
+	  .setName('gift')
+	  .setDescription('送禮給陪陪')
+	  .addUserOption(o =>
+		o.setName('user')
+		 .setDescription('選擇陪陪')
+		 .setRequired(true)
+	  ),
+	  .addStringOption(o =>
+		o.setName('gift')
+		 .setDescription('禮物名稱')
+		 .setRequired(true)
+	  ),
 ];
 
 // ===== 註冊 =====
@@ -111,6 +125,26 @@ async function getNextTicketId() {
   });
 
   return String(result.snapshot.val()).padStart(4, '0');
+}
+async function handleGift(i, sender, targetId, giftName) {
+
+  const targetMember = await i.guild.members.fetch(targetId).catch(() => null);
+
+  if (!targetMember || !targetMember.roles.cache.has(SERVICE_ROLE_ID)) {
+    return {
+      error: "❌ 只能送禮給陪陪"
+    };
+  }
+
+  await i.channel.send({
+    content: `🎁 感謝玩家 ${sender} 送給了 <@${targetId}> 【${giftName}】！`
+  });
+
+  return {
+    success: true,
+    target: `<@${targetId}>`,
+    giftName
+  };
 }
 
 // ===== 主事件 =====
@@ -219,6 +253,28 @@ client.on(Events.InteractionCreate, async (i) => {
 		💰 本次扣款金額：${amount} 元
 		💵 總計剩餘金額：${newBalance} 元
 		💎 累積儲值金額：${total} 元`
+		  });
+		}
+		if (i.commandName === "gift") {
+
+		  const target = i.options.getUser("user");
+		  const giftName = i.options.getString("gift");
+
+		  if (!target)
+			return i.reply({ content: "❌ 玩家不存在", ephemeral: true });
+
+		  const result = await handleGift(i, i.user, target.id, giftName);
+
+		  if (result.error) {
+			return i.reply({ content: result.error, ephemeral: true });
+		  }
+
+		  return i.reply({
+			content:
+		`🎁 送禮成功！
+		👤 接收對象：${result.target}
+		🎁 禮物名稱：${result.giftName}`,
+			ephemeral: true
 		  });
 		}
     }
@@ -374,7 +430,7 @@ client.on(Events.InteractionCreate, async (i) => {
 				.setPlaceholder("@某某陪陪")
 				.setRequired(true)
 				.setStyle(TextInputStyle.Short)
-			),
+			)
 			new ActionRowBuilder().addComponents(
 			new TextInputBuilder()
 			  .setCustomId("giftName")
@@ -391,7 +447,7 @@ client.on(Events.InteractionCreate, async (i) => {
     // ===== Modal =====
     if (i.isModalSubmit()) {
 
-      if (i.customId === "gift_direct_modal") {
+        if (i.customId === "gift_direct_modal") {
 
 		  const rawTarget = i.fields.getTextInputValue("target");
 		  const giftName = i.fields.getTextInputValue("giftName");
@@ -402,24 +458,17 @@ client.on(Events.InteractionCreate, async (i) => {
 
 		  const targetId = match[1];
 
-		  const targetMember = await i.guild.members.fetch(targetId).catch(() => null);
+		  const result = await handleGift(i, i.user, targetId, giftName);
 
-		  if (!targetMember || !targetMember.roles.cache.has(SERVICE_ROLE_ID)) {
-			return i.reply({
-			  content: "❌ 只能送禮給陪陪",
-			  ephemeral: true
-			});
+		  if (result.error) {
+			return i.reply({ content: result.error, ephemeral: true });
 		  }
-
-		  await i.channel.send({
-			content: `🎁 感謝玩家 ${i.user} 送給了 <@${targetId}> 【${giftName}】！`
-		  });
 
 		  return i.reply({
 			content:
 		`🎁 送禮成功！
-		👤 接收對象：<@${targetId}>
-		🎁 禮物名稱：${giftName}`,
+		👤 接收對象：${result.target}
+		🎁 禮物名稱：${result.giftName}`,
 			ephemeral: true
 		  });
 		}
