@@ -30,6 +30,13 @@ const giftImages = {
 	"9999": "https://cdn.discordapp.com/attachments/1495436285815427082/1500923539409080380/-1_0.png?ex=69fa3379&is=69f8e1f9&hm=2fa9425eb8d888af4c6788b8f257e02d572bfaad5ccd8ea17326225643d0421e&"
 	
 };
+const giftMessages = {
+  "50": "💩 小小心意，請笑納～",
+  "500": "💩💩 滿滿誠意送給你！",
+  "888": "✨ 發發發！祝你今天運氣爆棚！",
+  "1314": "💖 一生一世的心意送給你！",
+  "9999": "👑 究極大禮！你值得最頂的！"
+};
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
@@ -94,6 +101,20 @@ const commands = [
 		 .setDescription('禮物名稱')
 		 .setRequired(true)
 	  )
+	new SlashCommandBuilder()
+	  .setName('reset_total')
+	  .setNameLocalizations({ 'zh-TW': '每月清除總金額' })
+	  .setDescription('清除累積儲值')
+	  .addUserOption(o =>
+		o.setName('user')
+		 .setDescription('指定玩家')
+		 .setRequired(false)
+	  )
+	  .addRoleOption(o =>
+		o.setName('role')
+		 .setDescription('指定身分組')
+		 .setRequired(false)
+	  ),
 ];
 
 // ===== 註冊 =====
@@ -301,6 +322,57 @@ return i.reply({ embeds: [embed] });
   .setColor(0xFF69B4);
 
 return i.reply({ embeds: [embed], ephemeral: true });
+		}
+		if (i.commandName === "reset_total") {
+
+		  // 🔒 權限檢查
+		  if (!i.member.roles.cache.has(SERVICE_ROLE_ID)) {
+			return i.reply({ content: "❌ 沒有權限", ephemeral: true });
+		  }
+
+		  const user = i.options.getUser("user");
+		  const role = i.options.getRole("role");
+
+		  if (!user && !role) {
+			return i.reply({
+			  content: "❌ 請指定玩家或身分組",
+			  ephemeral: true
+			});
+		  }
+
+		  if (user && role) {
+			return i.reply({
+			  content: "❌ 只能選一個（玩家 / 身分組）",
+			  ephemeral: true
+			});
+		  }
+
+		  if (user) {
+			await set(ref(db, `totalRecharge/${user.id}`), 0);
+
+			return i.reply({
+			  content: `✅ 已清除 ${user} 的累積儲值`,
+			  ephemeral: true
+			});
+		  }
+
+		  if (role) {
+
+			await i.guild.members.fetch();
+
+			const members = i.guild.members.cache.filter(m =>
+			  m.roles.cache.has(role.id)
+			);
+
+			for (const member of members.values()) {
+			  await set(ref(db, `totalRecharge/${member.id}`), 0);
+			}
+
+			return i.reply({
+			  content: `✅ 已清除身分組 ${role} 共 ${members.size} 人的累積儲值`,
+			  ephemeral: true
+			});
+		  }
 		}
     }
 
@@ -561,13 +633,14 @@ content: `🎁 禮物工單
 		  await updateBalance(boss, bossIncome);
 
 		  const senderUser = await i.client.users.fetch(customerId);
-
+		  
+		  const giftText = giftMessages[String(price)] || "🎁 神秘禮物！";
 			const embed = new EmbedBuilder()
 			  .setTitle("✨ 快來看看是誰送禮啦!")
 			  .setDescription(
 `🎉 特別感謝 <@${customerId}> 送給 <@${boss}> 一份高貴的禮物!
 
-💰 禮物價值：${priceNum} 元`
+${giftText}`
 			  )
 			  .setThumbnail(senderUser.displayAvatarURL({ dynamic: true }))
 			  .setImage(giftImages[String(price)])
