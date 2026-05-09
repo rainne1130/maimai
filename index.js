@@ -120,36 +120,36 @@ const commands = [
   .setDescription('發送工單面板'),
   new SlashCommandBuilder()
   .setName('balance')
-  .setNameLocalizations({ 'zh-TW': '目前q幣' })
+  .setNameLocalizations({ 'zh-TW': '目前小心心' })
   .setDescription('查詢餘額')
   .addUserOption(o =>
     o.setName('user')
-     .setDescription('查詢玩家餘額q幣（管理員功能）')
+     .setDescription('查詢玩家餘額小心心（管理員功能）')
      .setRequired(false)
   ),
   new SlashCommandBuilder()
     .setName('total')
-	.setNameLocalizations({ 'zh-TW': '累積q幣' })
+	.setNameLocalizations({ 'zh-TW': '累積小心心' })
     .setDescription('查詢累積儲值')
     .addUserOption(o =>
       o.setName('user')
-       .setDescription('查詢玩家累積q幣（管理員功能）')
+       .setDescription('查詢玩家累積小心心（管理員功能）')
        .setRequired(false)
     ),
 
   new SlashCommandBuilder()
     .setName('add')
-	.setNameLocalizations({ 'zh-TW': '儲值q幣' })
+	.setNameLocalizations({ 'zh-TW': '儲值小心心' })
     .setDescription('儲值')
     .addUserOption(o => o.setName('user').setDescription('老闆名稱').setRequired(true))
-    .addIntegerOption(o => o.setName('amount').setDescription('q幣金額').setRequired(true)),
+    .addIntegerOption(o => o.setName('amount').setDescription('小心心金額').setRequired(true)),
 
   new SlashCommandBuilder()
     .setName('charge')
-	.setNameLocalizations({ 'zh-TW': '扣款q幣' })
+	.setNameLocalizations({ 'zh-TW': '扣款小心心' })
     .setDescription('扣款')
     .addUserOption(o => o.setName('user').setDescription('老闆名稱').setRequired(true))
-    .addIntegerOption(o => o.setName('amount').setDescription('q幣金額').setRequired(true)),
+    .addIntegerOption(o => o.setName('amount').setDescription('小心心金額').setRequired(true)),
 	
 	new SlashCommandBuilder()
 	  .setName('gift')
@@ -195,7 +195,7 @@ const commands = [
   })
   .setDescription("Super Gacha")
   .setDescriptionLocalizations({
-    "zh-TW": "🎰 每抽需要扣除q幣10元"
+    "zh-TW": "🎰 每抽需要扣除小心心10元"
   })
 
   .addIntegerOption(o =>
