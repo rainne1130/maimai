@@ -316,7 +316,7 @@ client.on(Events.InteractionCreate, async (i) => {
           new ButtonBuilder().setCustomId('boost').setLabel('💻 代打訂單').setStyle(ButtonStyle.Secondary),
           new ButtonBuilder().setCustomId('gift').setLabel('🎁 送禮物').setStyle(ButtonStyle.Danger)
         );
-        return i.reply({ content: "💖 奈奈客服中心\n請選擇服務類型", components: [row] });
+        return i.reply({ content: "💖 星辰客服中心\n請選擇服務類型", components: [row] });
       }
 
       if (i.commandName === "balance") {
