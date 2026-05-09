@@ -563,7 +563,7 @@ return i.reply({ embeds: [embed], ephemeral: true });
 		  // ===== 扣款 =====
 		  await updateBalance(i.user.id, -cost);
 
-		  const results = [];
+		  const itemCounts = {};
 
 		  let totalReward = 0;
 
@@ -589,7 +589,11 @@ return i.reply({ embeds: [embed], ephemeral: true });
 
 			totalReward += item.reward;
 
-			results.push(`🎁 ${item.name} x ${item.reward} 個`);
+			if (!itemCounts[item.name]) {
+			  itemCounts[item.name] = 0;
+			}
+
+			itemCounts[item.name] += 1;
 		  }
 
 		  // ===== 發放獎勵 =====
@@ -608,7 +612,12 @@ return i.reply({ embeds: [embed], ephemeral: true });
 
 			.setDescription(
 			  `✨ 恭喜 ${i.user} 抽到以下獎品 ✨\n\n` +
-			  results.join("\n")
+
+			  Object.entries(itemCounts)
+				.map(([name, amount]) =>
+				  `🎁 ${name} x${amount}個`
+				)
+				.join("\n")
 			)
 
 			.addFields({
