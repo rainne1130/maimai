@@ -589,9 +589,7 @@ return i.reply({ embeds: [embed], ephemeral: true });
 
 			totalReward += item.reward;
 
-			results.push(
-			  `🎁 ${item.name} ｜ 共 ${item.reward} q幣`
-			);
+			results.push(`🎁 ${item.name} x ${item.reward} 個`);
 		  }
 
 		  // ===== 發放獎勵 =====
@@ -624,11 +622,6 @@ return i.reply({ embeds: [embed], ephemeral: true });
 			})
 
 			.setTimestamp();
-
-		  // ===== 中獎圖 =====
-		  if (rareImage !== null) {
-			embed.setImage(rareImage);
-		  }
 
 		  return i.reply({
 			embeds: [embed]
