@@ -38,6 +38,70 @@ const giftMessages = {
   "9999": "👑 究極大禮！你值得最頂的！"
 };
 
+const GACHA_ITEMS = [
+
+  {
+    name: "精靈球",
+    reward: 3,
+    chance: 13
+  },
+
+  {
+    name: "超級球",
+    reward: 3,
+    chance: 13
+  },
+
+  {
+    name: "高級球",
+    reward: 3,
+    chance: 13
+  },
+
+  {
+    name: "大師球",
+    reward: 5,
+    chance: 13
+  },
+
+  {
+    name: "狩獵球",
+    reward: 5,
+    chance: 13
+  },
+
+  {
+    name: "等級球",
+    reward: 5,
+    chance: 13
+  },
+
+  {
+    name: "誘餌球",
+    reward: 5,
+    chance: 13
+  },
+
+  {
+    name: "月亮球",
+    reward: 10,
+    chance: 4
+  },
+
+  {
+    name: "友友球",
+    reward: 10,
+    chance: 4
+  },
+
+  {
+    name: "甜蜜球",
+    reward: 100,
+    chance: 1
+  }
+
+];
+
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
@@ -124,6 +188,32 @@ const commands = [
 		 .setDescription('選擇身分組')
 		 .setRequired(true)
 	  ),
+	new SlashCommandBuilder()
+  .setName("gacha")
+  .setNameLocalizations({
+    "zh-TW": "超級轉蛋機"
+  })
+  .setDescription("Super Gacha")
+  .setDescriptionLocalizations({
+    "zh-TW": "🎰 每抽需要扣除q幣10元"
+  })
+
+  .addIntegerOption(o =>
+    o.setName("count")
+      .setNameLocalizations({
+        "zh-TW": "抽獎次數"
+      })
+      .setDescription("Draw count")
+      .setDescriptionLocalizations({
+        "zh-TW": "🎲 請選擇要抽獎的次數"
+      })
+      .setRequired(true)
+      .addChoices(
+        { name: "1抽", value: 1 },
+        { name: "5抽", value: 5 },
+        { name: "10抽", value: 10 }
+      )
+  ),
 ];
 
 // ===== 註冊 =====
@@ -162,6 +252,24 @@ async function addRechargeTotal(userId, amount) {
 async function getRechargeTotal(userId) {
   const snap = await get(ref(db, `totalRecharge/${userId}`));
   return snap.exists() ? snap.val() : 0;
+}
+
+function randomGacha() {
+
+  const rand = Math.random() * 100;
+
+  let current = 0;
+
+  for (const item of GACHA_ITEMS) {
+
+    current += item.chance;
+
+    if (rand <= current) {
+      return item;
+    }
+  }
+
+  return GACHA_ITEMS[0];
 }
 
 async function getNextTicketId() {
@@ -435,6 +543,96 @@ return i.reply({ embeds: [embed], ephemeral: true });
 			.setTimestamp();
 
 		  return i.reply({ embeds: [embed] });
+		}
+		
+		if (i.commandName === "gacha") {
+
+		  const count = i.options.getInteger("count");
+
+		  const cost = count * 10;
+
+		  const balance = await getBalance(i.user.id);
+
+		  if (balance < cost) {
+			return i.reply({
+			  content: `❌ q幣不足，需要 ${cost} 元`,
+			  ephemeral: true
+			});
+		  }
+
+		  // ===== 扣款 =====
+		  await updateBalance(i.user.id, -cost);
+
+		  const results = [];
+
+		  let totalReward = 0;
+
+		  let rareImage = null;
+
+		  // ===== 抽獎 =====
+		  for (let x = 0; x < count; x++) {
+
+			const item = randomGacha();
+
+			// ===== 稀有圖 =====
+			if (item.name === "月亮球") {
+			  rareImage = "https://cdn.discordapp.com/attachments/1495436285815427082/1502613188439445524/03021538.info.iconRaw.png?ex=6a005915&is=69ff0795&hm=4791dd33def9dcddb9ad720feab9d9c3dea7b34526aac37c92b167fbdc40a30d";
+			}
+
+			if (item.name === "友友球") {
+			  rareImage = "https://cdn.discordapp.com/attachments/1495436285815427082/1502613217162166383/03021539.info.iconRaw.png?ex=6a00591c&is=69ff079c&hm=ada586c77628cb847856f1132473269031b9f042a67bcc044bfc46deac150dfb";
+			}
+
+			if (item.name === "甜蜜球") {
+			  rareImage = "https://cdn.discordapp.com/attachments/1495436285815427082/1502613236632256512/03021540.info.iconRaw.png?ex=6a005920&is=69ff07a0&hm=294ba176ee5f5d19f5704da89a746c142c30bd2ce586f42bcfe87aca0059957f";
+			}
+
+			totalReward += item.reward;
+
+			results.push(
+			  `🎁 ${item.name} ｜ 共 ${item.reward} q幣`
+			);
+		  }
+
+		  // ===== 發放獎勵 =====
+		  await updateBalance(i.user.id, totalReward);
+
+		  const newBalance = await getBalance(i.user.id);
+
+		  const embed = new EmbedBuilder()
+
+			.setColor(0xFFD700)
+
+			.setTitle("⭐ 超級轉蛋機 ⭐")
+
+			// ===== 右上小圖 =====
+			.setThumbnail("https://cdn.discordapp.com/attachments/1495436285815427082/1502614019633057851/312b84cd996fb668.png?ex=6a0059db&is=69ff085b&hm=05981aaf5eed698a0e992c5dc286ec7336a7e4e34f8bd9de1c08e37b05f1be23")
+
+			.setDescription(
+			  `✨ 恭喜 ${i.user} 抽到以下獎品 ✨\n\n` +
+			  results.join("\n")
+			)
+
+			.addFields({
+			  name: "💰 本次一共獲得",
+			  value: `${totalReward} q幣`,
+			  inline: true
+			})
+
+			.setFooter({
+			  text: "💖 本次抽取結束!!再次感謝闆闆使用轉蛋機 💖"
+			})
+
+			.setTimestamp();
+
+		  // ===== 中獎圖 =====
+		  if (rareImage !== null) {
+			embed.setImage(rareImage);
+		  }
+
+		  return i.reply({
+			embeds: [embed]
+		  });
 		}
     }
 
