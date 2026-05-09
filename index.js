@@ -54,7 +54,7 @@ const GACHA_ITEMS = [
 
   {
     name: "高級球",
-    reward: 3,
+    reward: 5,
     chance: 13
   },
 
@@ -66,37 +66,37 @@ const GACHA_ITEMS = [
 
   {
     name: "狩獵球",
-    reward: 5,
+    reward: 10,
     chance: 13
   },
 
   {
     name: "等級球",
-    reward: 5,
+    reward: 10,
     chance: 13
   },
 
   {
     name: "誘餌球",
-    reward: 5,
+    reward: 10,
     chance: 13
   },
 
   {
     name: "月亮球",
-    reward: 10,
+    reward: 20,
     chance: 4
   },
 
   {
     name: "友友球",
-    reward: 10,
+    reward: 20,
     chance: 4
   },
 
   {
     name: "甜蜜球",
-    reward: 100,
+    reward: 500,
     chance: 1
   }
 
@@ -195,7 +195,7 @@ const commands = [
   })
   .setDescription("Super Gacha")
   .setDescriptionLocalizations({
-    "zh-TW": "🎰 每抽需要扣除小心心10元"
+    "zh-TW": "🎰 每抽需要扣除小心心100元"
   })
 
   .addIntegerOption(o =>
@@ -549,13 +549,13 @@ return i.reply({ embeds: [embed], ephemeral: true });
 
 		  const count = i.options.getInteger("count");
 
-		  const cost = count * 10;
+		  const cost = count * 100;
 
 		  const balance = await getBalance(i.user.id);
 
 		  if (balance < cost) {
 			return i.reply({
-			  content: `❌ q幣不足，需要 ${cost} 元`,
+			  content: `❌ 小心心不足，需要 ${cost} 元`,
 			  ephemeral: true
 			});
 		  }
@@ -622,7 +622,7 @@ return i.reply({ embeds: [embed], ephemeral: true });
 
 			.addFields({
 			  name: "💰 本次一共獲得",
-			  value: `${totalReward} q幣`,
+			  value: `${totalReward} 小心心`,
 			  inline: true
 			})
 
@@ -1031,7 +1031,7 @@ await channel.send({
       const ticketId = await getNextTicketId();
 
       const channel = await i.guild.channels.create({
-        name: `奈奈電競-${ticketId}`,
+        name: `星辰電競-${ticketId}`,
         type: ChannelType.GuildText,
         parent: TICKET_CATEGORY_ID,
         permissionOverwrites: [
